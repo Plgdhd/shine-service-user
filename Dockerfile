@@ -11,7 +11,7 @@ WORKDIR /app
 COPY --from=builder /app/target/user-service-*.jar app.jar
 RUN chown appuser:appgroup app.jar
 USER appuser
-EXPOSE 8081
+EXPOSE 8082
 ENTRYPOINT ["java", \
   "-XX:+UseContainerSupport", \
   "-XX:MaxRAMPercentage=75.0", \

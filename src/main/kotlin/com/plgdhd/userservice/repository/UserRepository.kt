@@ -17,9 +17,11 @@ interface UserRepository : JpaRepository<User, UUID>{
 
     fun existsByEmail(email: String) : Boolean
 
+    fun existsByUsername(username: String) : Boolean
+
     @Modifying
     @Query("UPDATE User u SET u.status = :status, u.updatedAt = :now WHERE u.id = :id")
-    fun updateStaus(id: UUID, status: UserStatus, updatedAt: Instant = Instant.now())
+    fun updateStatus(id: UUID, status: UserStatus, updatedAt: Instant = Instant.now())
 
     @Modifying
     @Query("UPDATE User u SET u.role = :role, u.updatedAt = :now WHERE u.id = :id")
