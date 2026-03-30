@@ -5,7 +5,6 @@ import com.plgdhd.auth.event.proto.UserRegisteredEvent
 import com.plgdhd.auth.event.proto.UserRoleChangedEvent
 import com.plgdhd.userservice.common.UserRole
 import com.plgdhd.userservice.common.UserStatus
-import com.plgdhd.userservice.config.AppProperties
 import com.plgdhd.userservice.dto.request.UpdateUserRequest
 import com.plgdhd.userservice.dto.response.UserPrivateResponse
 import com.plgdhd.userservice.dto.response.UserPublicResponse
@@ -25,14 +24,13 @@ import org.springframework.security.oauth2.jwt.Jwt
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Instant
-import java.util.UUID
+import java.util.*
 
 @Service
 @Transactional(readOnly = true)
 class UserService(
     private val userRepository: UserRepository,
     private val processedEventRepository: ProcessedEventRepository,
-    private val appProperties: AppProperties,
     private val userMapper: UserMapper
 ) {
 
@@ -41,15 +39,14 @@ class UserService(
 
     /* переделаю, думаю говнокод тут */
     @Transactional
-    fun createUser(event: UserRegisteredEvent, topic: String){
+    fun createUser(event: UserRegisteredEvent, topic: String) {
 
         // TODO вынести в сервис идемпотентности, AOP?
-        try{
+        try {
             processedEventRepository.save(ProcessedEvent(event.eventId, topic))
 
             processedEventRepository.flush()
-        }
-        catch(ex: DataIntegrityViolationException) {
+        } catch (ex: DataIntegrityViolationException) {
 
             log.warn("Ивент {} уже обрабатывается или обработано", event.eventId)
             return
@@ -58,29 +55,28 @@ class UserService(
         /* TODO для всех таких случаев придумать обработку */
         val uuid = UUID.fromString(event.userId)
 
-
-        try {
-
-            val user = User(
-                id = uuid,
-                username = event.username,
-                email = event.email,
-                role = UserRole.fromString(event.role),
-            )
-
-            userRepository.save(user)
-
-            log.info(
-                "Пользователь создан: userId={}, username={}",
-                event.userId, event.username
-            )
-        }
-        catch(ex: DataIntegrityViolationException){
+        if (userRepository.existsById(uuid)) {
             log.warn("Пользователь {} уже существует", uuid)
+            processedEventRepository.save(ProcessedEvent(event.eventId, topic))
+            return
         }
+
+        val user = User(
+            id = uuid,
+            username = event.username,
+            email = event.email,
+            role = UserRole.fromString(event.role)
+        )
+
+        userRepository.save(user)
+
+        log.info(
+            "Пользователь создан: userId={}, username={}",
+            event.userId, event.username
+        )
     }
 
-    @Cacheable("userProfiles", key="#userId")
+    @Cacheable("userProfiles", key = "#userId")
     fun getPublicProfile(userId: String): UserPublicResponse {
         val user = findUserById(userId)
         return userMapper.toPublicResponse(user)
@@ -105,22 +101,23 @@ class UserService(
     @Transactional
     @CacheEvict("userProfiles", key = "#jwt.subject")
     fun updateCurrentProfile(
-        jwt: Jwt, request: UpdateUserRequest): UserPrivateResponse {
+        jwt: Jwt, request: UpdateUserRequest
+    ): UserPrivateResponse {
 
         val userId = jwt.subject
         val user = findUserById(userId)
 
         request.username?.let { newUsername ->
-            if(newUsername != user.username && userRepository.existsByUsername(newUsername)) {
+            if (newUsername != user.username && userRepository.existsByUsername(newUsername)) {
                 throw UserAlreadyExistsException(newUsername)
             }
             user.username = newUsername
         }
 
-        user.apply{
-            request.bio?.let{ bio = it}
+        user.apply {
+            request.bio?.let { bio = it }
 
-            request.avatarUrl?.let{ avatarUrl = it }
+            request.avatarUrl?.let { avatarUrl = it }
         }
 
         val saved = userRepository.save(user)
@@ -138,7 +135,7 @@ class UserService(
     @CacheEvict("userProfiles", key = "#jwt.subject")
     fun bunUser(userBannedEvent: UserBannedEvent, topic: String) {
 
-        if(processedEventRepository.existsById(userBannedEvent.eventId)) return
+        if (processedEventRepository.existsById(userBannedEvent.eventId)) return
 
         val uuid = UUID.fromString(userBannedEvent.userId)
 
@@ -152,7 +149,7 @@ class UserService(
     @CacheEvict("userProfiles", key = "#jwt.subject")
     fun updateUserRole(userRoleChangedEvent: UserRoleChangedEvent, topic: String) {
 
-        if(processedEventRepository.existsById(userRoleChangedEvent.eventId)) return
+        if (processedEventRepository.existsById(userRoleChangedEvent.eventId)) return
 
         val uuid = UUID.fromString(userRoleChangedEvent.userId)
 
@@ -162,18 +159,17 @@ class UserService(
         log.info("Обновлена роль для пользователя {} на {} ", uuid, userRoleChangedEvent.newRole)
     }
 
-    private fun findUserById(userId: String): User{
+    private fun findUserById(userId: String): User {
 
-        val uuid = try{
+        val uuid = try {
 
             UUID.fromString(userId)
-        }
-        catch (e: IllegalArgumentException){
+        } catch (e: IllegalArgumentException) {
             throw UserNotFoundException(userId)
         }
 
         return userRepository.findById(uuid)
-            .orElseThrow{UserNotFoundException(userId)}
+            .orElseThrow { UserNotFoundException(userId) }
     }
 
     @Scheduled(cron = "0 0 3 * * *")
@@ -184,7 +180,7 @@ class UserService(
 
         val deleted = processedEventRepository.deleteOlderThan(cutoff)
 
-        if(deleted > 0 ) log.info("Удалены устаревшие ивенты: {}", deleted)
+        if (deleted > 0) log.info("Удалены устаревшие ивенты: {}", deleted)
     }
 
 }

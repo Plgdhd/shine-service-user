@@ -1,19 +1,23 @@
-FROM eclipse-temurin:21-jdk-alpine AS builder
+FROM maven:3.9.6-eclipse-temurin-21 AS builder
 WORKDIR /app
-COPY pom.xml .
-RUN mvn dependency:go-offline -B 2>/dev/null || true
-COPY src ./src
-RUN mvn clean package -DskipTests -B
+
+COPY . .
+
+
+RUN --mount=type=cache,target=/root/.m2 \
+    mvn package -pl user-service -am -DskipTests -q
+
+RUN java -Djarmode=layertools -jar user-service/target/user-service-*.jar extract --destination user-service/target/extracted
 
 FROM eclipse-temurin:21-jre-alpine AS runtime
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+RUN addgroup -g 1001 -S appgroup && adduser -u 1001 -S appuser -G appgroup
 WORKDIR /app
-COPY --from=builder /app/target/user-service-*.jar app.jar
-RUN chown appuser:appgroup app.jar
+
+COPY --from=builder --chown=appuser:appgroup /app/user-service/target/extracted/dependencies/ ./
+COPY --from=builder --chown=appuser:appgroup /app/user-service/target/extracted/spring-boot-loader/ ./
+COPY --from=builder --chown=appuser:appgroup /app/user-service/target/extracted/snapshot-dependencies/ ./
+COPY --from=builder --chown=appuser:appgroup /app/user-service/target/extracted/application/ ./
+
 USER appuser
 EXPOSE 8082
-ENTRYPOINT ["java", \
-  "-XX:+UseContainerSupport", \
-  "-XX:MaxRAMPercentage=75.0", \
-  "-Djava.security.egd=file:/dev/./urandom", \
-  "-jar", "app.jar"]
+ENTRYPOINT ["java", "-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=75.0", "-XX:+UseG1GC", "-Djava.security.egd=file:/dev/./urandom", "-Dspring.profiles.active=${SPRING_PROFILES_ACTIVE:prod}", "org.springframework.boot.loader.launch.JarLauncher"]

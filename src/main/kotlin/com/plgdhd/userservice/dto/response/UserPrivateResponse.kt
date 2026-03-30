@@ -1,7 +1,7 @@
 package com.plgdhd.userservice.dto.response
 
 import java.time.Instant
-import java.util.UUID
+import java.util.*
 
 data class UserPrivateResponse(
 
@@ -19,7 +19,7 @@ data class UserPrivateResponse(
 
     val status: String,
 
-    val createAt: Instant,
+    val createdAt: Instant,
 
     val updatedAt: Instant
 )

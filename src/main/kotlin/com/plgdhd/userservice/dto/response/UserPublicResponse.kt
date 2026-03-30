@@ -14,5 +14,5 @@ data class UserPublicResponse(
 
     val role: String,
 
-    val createAt: String
+    val createdAt: String
 )

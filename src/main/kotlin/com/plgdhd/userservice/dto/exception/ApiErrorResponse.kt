@@ -12,7 +12,7 @@ data class ApiErrorResponse(
 
     val message: String,
 
-    val path: String,
+    val path: String? = null,
 
     val timestamp: Instant = Instant.now(),
 
@@ -22,9 +22,15 @@ data class ApiErrorResponse(
     companion object {
         fun of(status: Int,
                error: String,
+               message: String
+        ) = ApiErrorResponse(status, error, message)
+
+        fun of(status: Int,
+               error: String,
                message: String,
                path: String
         ) = ApiErrorResponse(status, error, message, path)
+
 
         fun withErrors(status: Int,
                        error: String,

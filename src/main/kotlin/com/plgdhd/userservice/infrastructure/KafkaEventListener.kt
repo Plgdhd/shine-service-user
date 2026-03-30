@@ -1,5 +1,6 @@
 package com.plgdhd.userservice.infrastructure
 
+import com.google.protobuf.InvalidProtocolBufferException
 import com.plgdhd.auth.event.proto.UserRegisteredEvent
 import com.plgdhd.userservice.config.AppProperties
 import com.plgdhd.userservice.exception.UserNotFoundException
