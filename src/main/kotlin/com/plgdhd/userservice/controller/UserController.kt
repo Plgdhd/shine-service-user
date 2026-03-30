@@ -1,25 +1,15 @@
 package com.plgdhd.userservice.controller
 
-import com.plgdhd.userservice.common.UserRole
 import com.plgdhd.userservice.dto.request.UpdateUserRequest
 import com.plgdhd.userservice.dto.response.UserPrivateResponse
 import com.plgdhd.userservice.dto.response.UserPublicResponse
-import com.plgdhd.userservice.model.User
 import com.plgdhd.userservice.service.UserService
 import jakarta.validation.Valid
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.security.core.annotation.AuthenticationPrincipal
-import org.springframework.security.oauth2.core.OAuth2Token
 import org.springframework.security.oauth2.jwt.Jwt
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.PutMapping
-import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.ResponseBody
-import org.springframework.web.bind.annotation.ResponseStatus
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
 
 @RestController
 @RequestMapping("/users")
